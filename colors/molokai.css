@@ -1,0 +1,49 @@
+#editor {
+  background-color: #272822;
+  color: #F8F8F2;
+}
+
+
+.boolean {
+  color: #AE81FF;
+}
+
+.keyword {
+  color: #F92672;
+  font-weight: bold;
+}
+
+.number {
+  color: #AE81FF;
+}
+
+.function {
+  color: #A6E22E;
+}
+
+.cursor {
+  background-color: #3E3D32;
+}
+
+.gutter {
+  color: #BCBCBC;
+  background-color: #3B3A32;
+  border-color: #BCBCBC;
+}
+
+.string {
+  color: #E6DB74;
+}
+
+.gutter li.cursor {
+  color: #FD971F;
+}
+
+.identifier {
+  color: #FD971F;
+}
+
+.comment,
+.comment * {
+  color: #75715E;
+}

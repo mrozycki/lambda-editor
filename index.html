@@ -1,0 +1,37 @@
+<!doctype html>
+<html>
+  <head>
+    <title>&lambda;edu.pl</title>
+    <meta charset="utf-8">
+    <link href='https://fonts.googleapis.com/css?family=Fira+Mono:400,700&subset=latin,latin-ext' rel='stylesheet' type='text/css'>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="colors/molokai.css">
+  </head>
+
+  <body>
+    <div id="header">
+      <p>&lambda;edu.pl</p>
+      <p>&copy; 2015 Mariusz Różycki</p>
+    </div>
+    <div id="editor">
+      <div class="gutter">
+        <input id="input-hack"></input>
+        <ul></ul>
+      </div>
+
+      <div class="text-editor">
+        <span id="cursor">&nbsp;</span>
+        <div class="lines"></div>
+      </div>
+      <div class="clearfix"></div>
+    </div>
+
+    <div id="preview">
+      <canvas id="preview-canvas"></canvas>
+    </div>
+
+    <script src="lib/jquery-2.1.4.js"></script>
+    <script src="lib/processing.js"></script>
+    <script src="editor.js"></script>
+  </body>
+</html>
