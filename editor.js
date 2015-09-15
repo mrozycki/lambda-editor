@@ -187,7 +187,7 @@ Editor.prototype.insert = function(character) {
 }
 
 Editor.prototype.getCode = function() {
-  return this.code.join('\n');
+  return ["size(600,600);"].concat(this.code).join('\n');
 }
 
 Editor.prototype.keyHandlers = [];
@@ -368,12 +368,12 @@ $('#input-hack').on('keydown', function(e) {
 
 var code = editor.getCode();
 var canvas = document.getElementById("preview-canvas");
-var instance = new Processing(canvas, code).size(600,600);
+var instance = new Processing(canvas, code);
 
 setInterval(function() {
   if (code.trim() != editor.getCode().trim()) {
     code = editor.getCode();
     instance.exit();
-    instance = new Processing(canvas, code).size(600,600);
+    instance = new Processing(canvas, code);
   }
 }, 1000);
