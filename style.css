@@ -3,13 +3,23 @@
   border: 0;
   padding: 0;
   box-sizing: border-box;
-  font-size: 18px;
-  line-height: 20px;
-  letter-spacing: 0;
 }
 
 html, body {
   height: 100%;
+}
+
+#header p,
+#editor,
+pre.line,
+#text-width-hack {
+  font-family: 'Fira Mono', 'Consolas', monospace;
+  font-size: 18px;
+  line-height: 20px;
+}
+
+#text-width-hack {
+  display: none;
 }
 
 #header {
@@ -22,7 +32,6 @@ html, body {
 #header p {
   font-size: 20px;
   line-height: 32px;
-  font-family: 'Fira Mono', 'Consolas', monospace;
 }
 
 #header p:first-child {
@@ -40,15 +49,12 @@ html, body {
   top: 32px;
   bottom: 0;
   overflow: auto;
-
-  font-family: 'Fira Mono', 'Consolas', monospace;
 }
 
 pre.line {
   width: 100%;
   height: 20px;
   font-feature-settings: "liga" 0;
-  font-family: 'Fira Mono', 'Consolas', monospace;
   margin-left: -10px;
   padding-left: 10px;
 }

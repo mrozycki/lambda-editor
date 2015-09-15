@@ -17,49 +17,65 @@ function Editor($e) {
   this.$gutter = $e.find('.gutter ul');
   this.$text = $e.find('.lines');
   this.$cursor = $('#cursor');
-  this.charWidth = 10.8;
+
+//  this.code = [
+//    '// Author: Mariusz Różycki',
+//    'const PI = 3.1415926535',
+//    '',
+//    'var circle = {x: 0, y: 0, r: 10};',
+//    'var points = [[]];',
+//    '',
+//    'var myLine = function(a, b) {',
+//    '    line(a.x, a.y, b.x, b.y);',
+//    '}',
+//    '',
+//    'draw = function() {',
+//    '    background(255);',
+//    '    stroke(0);',
+//    '    strokeWeight(1);',
+//    '    ellipse(circle.x, circle.y, 2*circle.r, 2*circle.r);',
+//    '    ',
+//    '    circle.x = mouseX;',
+//    '    circle.y = mouseY;',
+//    '    if (mousePressed) {',
+//    '        points[points.length-1].push({x: mouseX, y: mouseY});',
+//    '    } else if (points[points.length-1].length > 0) {',
+//    '        points.push([]);',
+//    '    }',
+//    '    ',
+//    '    strokeWeight(5);',
+//    '    var t = 0;',
+//    '    for (var i = 0; i < points.length; i++) {',
+//    '        for (var j = 0; j < points[i].length-1; j++) {',
+//    '            stroke(128*(sin(t+2*PI/3)+1), 128*(sin(t)+1), 128*(sin(t+4*PI/3)+1));',
+//    '            t += 0.01;',
+//    '            myLine(points[i][j], points[i][j+1]);',
+//    '        }',
+//    '    }',
+//    '}',
+//  ];
 
   this.code = [
     '// Author: Mariusz Różycki',
-    'size(600, 600);',
-    'const PI = 3.1415926535',
-    '',
-    'var circle = {x: 0, y: 0, r: 10};',
-    'var points = [[]];',
-    '',
-    'var myLine = function(a, b) {',
-    '    line(a.x, a.y, b.x, b.y);',
+    'var points = [];',
+    'for (var i = 0, t = 0; i < 629; i++, t += 0.01) {',
+    '    points.push({x: width/2*(sin(13*t)+1), y: height/2*(cos(19*t)+1)});',
     '}',
     '',
+    'var t = 0;',
     'draw = function() {',
-    '    background(255);',
-    '    stroke(0);',
-    '    strokeWeight(1);',
-    '    ellipse(circle.x, circle.y, 2*circle.r, 2*circle.r);',
+    '    background(255);    ',
+    '    strokeWeight(width/60);',
     '    ',
-    '    circle.x = mouseX;',
-    '    circle.y = mouseY;',
-    '    if (mousePressed) {',
-    '        points[points.length-1].push({x: mouseX, y: mouseY});',
-    '    } else if (points[points.length-1].length > 0) {',
-    '        points.push([]);',
-    '    }',
-    '    ',
-    '    strokeWeight(5);',
-    '    var t = 0;',
-    '    for (var i = 0; i < points.length; i++) {',
-    '        for (var j = 0; j < points[i].length-1; j++) {',
-    '            stroke(128*(sin(t+2*PI/3)+1), 128*(sin(t)+1), 128*(sin(t+4*PI/3)+1));',
-    '            t += 0.01;',
-    '            myLine(points[i][j], points[i][j+1]);',
-    '        }',
+    '    for (var i = 0; i < points.length-1; i++, t+= 0.2) {',
+    '        stroke(128*(sin(t+2*PI/3)+1), 128*(sin(t)+1), 128*(sin(t+4*PI/3)+1));',
+    '        line(points[i].x, points[i].y, points[i+1].x, points[i+1].y);',
     '    }',
     '}',
   ];
 
 //  this.code = [
 //    '// Author: Mariusz Różycki',
-//    'size(600, 600);',
 //    'const PI = 3.1415926535;',
 //    '',
 //    'var t = 0;',
@@ -74,13 +90,17 @@ function Editor($e) {
   this.cursor = {x: 0, y: 0};
 }
 
+Editor.prototype.getCharWidth = function() {
+  var $hack = $("#text-width-hack");
+  return $hack.innerWidth() / $hack.text().length;
+}
 
 Editor.prototype.formatLine = function(line, active) {
   line = line.replace(/(.|^)("[^"]*")([^>]|$)/g, '$1<span class="string">$2</span>$3');
   line = line.replace(/(.|^)('[^"]*')([^>]|$)/g, '$1<span class="string">$2</span>$3');
   line = line.replace(/([0-9]+(\.[0-9]*)?)/g, '<span class="number">$1</span>');
   line = line.replace(/([^a-zA-Z0-9]|^)(var|function|const|else if|if|else|for|while|return)([^a-zA-Z0-9]|$)/g, '$1<span class="keyword">$2</span>$3');
-  line = line.replace(/([^a-zA-Z0-9]|^)(push|strokeWeight|rect|log|print|line|background|size|ellipse|fill|stroke|noStroke|noFill|sin|cos)([^a-zA-Z0-9]|$)/g, '$1<span class="function">$2</span>$3');
+  line = line.replace(/([^a-zA-Z0-9]|^)(push|strokeWeight|rect|log|print|line|background|size|ellipse|fill|stroke|noStroke|noFill|sin|cos|tan|cot|max|min|abs|pow|sqrt)([^a-zA-Z0-9]|$)/g, '$1<span class="function">$2</span>$3');
   line = line.replace(/([^a-zA-Z0-9]|^)(true|false)([^a-zA-Z0-9]|$)/g, '$1<span class="boolean">$2</span>$3');
   line = line.replace(/([^a-zA-Z0-9]|^)(length|console|width|height|mouseX|mouseY|mousePressed)([^a-zA-Z0-9]|$)/g, '$1<span class="identifier">$2</span>$3');
   line = line.replace(/(\/\/.*)$/, '<span class="comment">$1</span>');
@@ -144,7 +164,7 @@ Editor.prototype.render = function() {
     self.$text.append(self.formatLine(v, k == self.cursor.y));
   });
 
-  var charWidth = this.charWidth;
+  var charWidth = this.getCharWidth();
   var charHeight = this.$cursor.height();
 
   this.$cursor.css({
@@ -303,7 +323,7 @@ Editor.prototype.handleMouseDown = function(e) {
   
   var ax = e.pageX - offset.left;
   var ay = e.pageY - offset.top;
-  var charWidth = this.charWidth;
+  var charWidth = this.getCharWidth();
   var charHeight = this.$cursor.height();
   this.cursor.y = Math.min(Math.floor(ay/charHeight), this.code.length);
   this.cursor.x = Math.min(Math.round(ax/charWidth), this.currentLine().length);
@@ -348,12 +368,12 @@ $('#input-hack').on('keydown', function(e) {
 
 var code = editor.getCode();
 var canvas = document.getElementById("preview-canvas");
-var instance = new Processing(canvas, code);
+var instance = new Processing(canvas, code).size(600,600);
 
 setInterval(function() {
   if (code.trim() != editor.getCode().trim()) {
     code = editor.getCode();
     instance.exit();
-    instance = new Processing(canvas, code);
+    instance = new Processing(canvas, code).size(600,600);
   }
 }, 1000);
