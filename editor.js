@@ -1,6 +1,10 @@
 var $editor = $('#editor');
 
-function getKeyName(e) {
+var sanitize = function(line) {
+  return $('<span></span>').text(line).html();
+}
+
+var getKeyName = function(e) {
   var keyboardMap = ["","","","Cancel","","","Help","","Backspace","Tab","","","Clear","Enter","Return","","Shift","Control","Alt","Pause","CapsLock","Kana","Eisu","Junja","Final","Hanja","","Escape","Convert","NonConvert","Accept","ModeChange"," ","PageUp","PageDown","End","Home","ArrowLeft","ArrowUp","ArrowRight","ArrowDown","Select","Print","Execute","PrintScreen","Insert","Delete","","0","1","2","3","4","5","6","7","8","9",":",";","<","=",">","?","@","a","b","c","d","e","f","g","h","i","j","k","l","m","n","o","p","q","r","s","t","u","v","w","x","y","z","Win","","ContextMenu","","Sleep","0","1","2","3","4","5","6","7","8","9","*","+",".","-",".","/","F1","F2","F3","F4","F5","F6","F7","F8","F9","F10","F11","F12","F13","F14","F15","F16","F17","F18","F19","F20","F21","F22","F23","F24","","","","","","","","","NumLock","ScrollLock","WIN_OEM_FJ_JISHO","WIN_OEM_FJ_MASSHOU","WIN_OEM_FJ_TOUROKU","WIN_OEM_FJ_LOYA","WIN_OEM_FJ_ROYA","","","","","","","","","","^","!","\"","#","$","%","&","_","(",")","*","+","|","-","{","}","~","","","","","VolumeMute","VolumeDown","VolumeUp","","",";","=",",","-",".","/","`","","","","","","","","","","","","","","","","","","","","","","","","","","","[","\\","]","\'","","Meta","AltGr","","WIN_ICO_HELP","WIN_ICO_00","","WIN_ICO_CLEAR","","","WIN_OEM_RESET","WIN_OEM_JUMP","WIN_OEM_PA1","WIN_OEM_PA2","WIN_OEM_PA3","WIN_OEM_WSCTRL","WIN_OEM_CUSEL","WIN_OEM_ATTN","WIN_OEM_FINISH","WIN_OEM_COPY","WIN_OEM_AUTO","WIN_OEM_ENLW","WIN_OEM_BACKTAB","ATTN","CRSEL","EXSEL","EREOF","PLAY","ZOOM","","PA1","WIN_OEM_CLEAR",""];
   var shiftKeyboardMap = ["","","","Cancel","","","Help","","Backspace","Tab","","","Clear","Enter","Return","","Shift","Control","Alt","Pause","CapsLock","Kana","Eisu","Junja","Final","Hanja","","Escape","Convert","NonConvert","Accept","ModeChange","Space","PageUp","PageDown","End","Home","ArrowLeft","ArrowUp","ArrowRight","ArrowDown","Select","Print","Execute","PrintScreen","Insert","Delete","",")","!","@","#","$","%","^","&","*","(",":",":","<","+",">","?","@","A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","S","T","U","V","W","X","Y","Z","Win","","ContextMenu","","Sleep","","End","ArrowDown","PageDown","ArrowLeft","5","ArrowRight","Home","ArrowUp","PageUp","*","+","Separator","-",".","/","F1","F2","F3","F4","F5","F6","F7","F8","F9","F10","F11","F12","F13","F14","F15","F16","F17","F18","F19","F20","F21","F22","F23","F24","","","","","","","","","NumLock","ScrollLock","WIN_OEM_FJ_JISHO","WIN_OEM_FJ_MASSHOU","WIN_OEM_FJ_TOUROKU","WIN_OEM_FJ_LOYA","WIN_OEM_FJ_ROYA","","","","","","","","","","^","!","\"","#","$","%","&","_","(",")","*","+","|","-","{","}","~","","","","","VolumeMute","VolumeDown","VolumeUp","","",":","+","<","_",">","|","~","","","","","","","","","","","","","","","","","","","","","","","","","","","{","|","}","\"","","Meta","AltGr","","WIN_ICO_HELP","WIN_ICO_00","","WIN_ICO_CLEAR","","","WIN_OEM_RESET","WIN_OEM_JUMP","WIN_OEM_PA1","WIN_OEM_PA2","WIN_OEM_PA3","WIN_OEM_WSCTRL","WIN_OEM_CUSEL","WIN_OEM_ATTN","WIN_OEM_FINISH","WIN_OEM_COPY","WIN_OEM_AUTO","WIN_OEM_ENLW","WIN_OEM_BACKTAB","ATTN","CRSEL","EXSEL","EREOF","PLAY","ZOOM","","PA1","WIN_OEM_CLEAR",""];
 
@@ -122,13 +126,8 @@ Editor.prototype.currentLine = function(line) {
   return line;
 }
 
-Editor.prototype.generateLineNumber = function(number, active) {
-  var result = $('<li></li>').text(number);
-
-  if (active) {
-    result.addClass('cursor');
-  }
-  return result;
+Editor.prototype.generateLineNumber = function(number) {
+  return $('<li></li>').text(number);
 }
 
 Editor.prototype.getIndentLevel = function(line) {
@@ -211,7 +210,6 @@ Editor.prototype.deleteSelectedText = function() {
     this.cursor.endX = boundaries.startX;
     this.cursor.endY = boundaries.startY;
     this.syncCursors();
-    console.log(this.cursor);
     return;
   }
 
@@ -226,13 +224,30 @@ Editor.prototype.deleteSelectedText = function() {
   this.syncCursors();
 }
 
-var sanitize = function(line) {
-  return $('<span></span>').text(line).html();
+Editor.prototype.updateGutter = function(k) {
+  var lineDifference = this.$gutter.children().length - this.code.length;
+
+  if (lineDifference < 0) {
+    for (var i = this.$gutter.children().length+1; i <= this.code.length; i++) {
+      this.$gutter.append(this.generateLineNumber(i));
+    }
+  } else if (lineDifference > 0) {
+    var self = this;
+    this.$gutter.children().each(function(k, v) {
+      if (k >= self.code.length) {
+        v.remove();
+      }
+    });
+  }
+
+  var $activeLine = this.$gutter.children('.cursor');
+  if (this.$gutter.children().index($activeLine) != this.cursor.endY) {
+    $activeLine.removeClass('cursor');
+    $(this.$gutter.children().get(this.cursor.endY)).addClass('cursor');
+  }
 }
 
 Editor.prototype.renderLine = function(k) {
-  this.$gutter.append(this.generateLineNumber(k+1, k == this.cursor.endY));
-
   var selectionBoundaries = this.selectionBoundaries();
   var line = this.code[k];
   if (this.selectionEmpty()) {
@@ -256,7 +271,7 @@ Editor.prototype.renderLine = function(k) {
 
 Editor.prototype.render = function() {
   this.rendering = true;
-  this.$gutter.empty();
+  this.updateGutter();
   this.$text.empty();
 
   var self = this;
@@ -507,9 +522,7 @@ $('#editor').mouseup(function(e) {
 });
 
 $('#editor').mouseleave(function(e) {
-  console.log("mouseleave", editor.isMouseDown);
   if (!editor.isMouseDown) return;
-
   editor.isMouseDown = false;
   editor.moveEndCursor(editor.mouseToCursorCoords(e));
   editor.render();
