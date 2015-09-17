@@ -226,24 +226,29 @@ Editor.prototype.deleteSelectedText = function() {
   this.syncCursors();
 }
 
+var sanitize = function(line) {
+  return $('<span></span>').text(line).html();
+}
+
 Editor.prototype.renderLine = function(k) {
   this.$gutter.append(this.generateLineNumber(k+1, k == this.cursor.endY));
 
   var selectionBoundaries = this.selectionBoundaries();
   var line = this.code[k];
   if (this.selectionEmpty()) {
+    line = sanitize(line);
   } else if (this.lineSelected(k)) {
-    line = '<span class="selected">'+line+'</span>';
+    line = '<span class="selected">'+sanitize(line)+'</span>';
   } else if (selectionBoundaries.startY == k && selectionBoundaries.endY == k) {
-    line = line.slice(0, selectionBoundaries.startX)
-      + '<span class="selected">'+line.slice(selectionBoundaries.startX, selectionBoundaries.endX)+'</span>'
-      + line.slice(selectionBoundaries.endX);
+    line = sanitize(line.slice(0, selectionBoundaries.startX))
+      + '<span class="selected">'+sanitize(line.slice(selectionBoundaries.startX, selectionBoundaries.endX))+'</span>'
+      + sanitize(line.slice(selectionBoundaries.endX));
   } else if (selectionBoundaries.startY == k) {
-    line = line.slice(0, selectionBoundaries.startX)
-      + '<span class="selected">'+line.slice(selectionBoundaries.startX)+'</span>';
+    line = sanitize(line.slice(0, selectionBoundaries.startX))
+      + '<span class="selected">'+sanitize(line.slice(selectionBoundaries.startX))+'</span>';
   } else if (selectionBoundaries.endY == k) {
-    line = '<span class="selected">'+line.slice(0, selectionBoundaries.endX)+'</span>'
-      + line.slice(selectionBoundaries.endX);
+    line = '<span class="selected">'+sanitize(line.slice(0, selectionBoundaries.endX))+'</span>'
+      + sanitize(line.slice(selectionBoundaries.endX));
   }
 
   return this.formatLine(line, k == this.cursor.endY);
