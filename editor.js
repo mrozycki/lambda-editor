@@ -155,6 +155,14 @@ Editor.prototype.indent = function(line, amount) {
   return result;
 }
 
+Editor.prototype.selectAll = function() {
+  this.cursor.startX = 0;
+  this.cursor.startY = 0;
+  this.cursor.endY = this.code.length-1;
+  this.cursor.endX = this.code[this.code.length-1].length;
+  this.render();
+}
+
 Editor.prototype.selectionBoundaries = function() {
   if (this.cursor.startY > this.cursor.endY) {
     return { startX: this.cursor.endX, startY: this.cursor.endY,
@@ -193,7 +201,9 @@ Editor.prototype.selectedText = function() {
       .slice(boundaries.startX, boundaries.endX);
   }
 
-  return "asdf";
+  return [this.code[boundaries.startY].slice(boundaries.startX)]
+    .concat(this.code.slice(boundaries.startY+1, boundaries.endY))
+    .concat([this.code[boundaries.endY].slice(0, boundaries.endX)]).join('\n');
 }
 
 Editor.prototype.deleteSelectedText = function() {
@@ -222,6 +232,7 @@ Editor.prototype.deleteSelectedText = function() {
   this.cursor.endX = boundaries.startX;
   this.cursor.endY = boundaries.startY;
   this.syncCursors();
+  this.render();
 }
 
 Editor.prototype.updateGutter = function(k) {
@@ -289,10 +300,10 @@ Editor.prototype.render = function() {
   this.rendering = false;
 }
 
-Editor.prototype.insert = function(character) {
+Editor.prototype.insert = function(character, noIndent) {
   this.deleteSelectedText();
 
-  if (character[0] == '}' && this.currentLine().trim() == "") {
+  if (character[0] == '}' && this.currentLine().trim() == "" && !noIndent) {
     this.currentLine(this.indent(this.currentLine(), -4));
   }
 
@@ -302,7 +313,18 @@ Editor.prototype.insert = function(character) {
     + this.code[this.cursor.endY].slice(this.cursor.endX);
 
   this.cursor.endX += character.length;
+  editor.render();
   this.syncCursors();
+}
+
+Editor.prototype.paste = function(data) {
+  this.deleteSelectedText();
+  var lines = data.split('\n');
+  for (var i = 0; i < lines.length-1; i++) {
+    this.insert(lines[i], true);
+    this.keyHandlers['Enter'].apply(this, [true]);
+  }
+  this.insert(lines[lines.length-1]);
 }
 
 Editor.prototype.getCode = function() {
@@ -364,7 +386,7 @@ Editor.prototype.keyHandlers['Delete'] = function() {
   this.keyHandlers['Backspace'].apply(this);
 }
 
-Editor.prototype.keyHandlers['Enter'] = function() {
+Editor.prototype.keyHandlers['Enter'] = function(noIndent) {
   this.deleteSelectedText();
   var line = this.currentLine();
   this.currentLine(line.slice(0, this.cursor.endX));
@@ -373,8 +395,10 @@ Editor.prototype.keyHandlers['Enter'] = function() {
     this.cursor.endY+1, 0, 
     this.indent(
       line.slice(this.cursor.endX), 
-      this.getIndentLevel(this.currentLine()) 
-        + (this.currentLine().substr(-1) == "{" ? 4 : 0)
+      (noIndent ? 0 :
+        this.getIndentLevel(this.currentLine()) 
+          + (this.currentLine().substr(-1) == "{" ? 4 : 0)
+      )
     )
   );
 
@@ -459,6 +483,19 @@ Editor.prototype.keyHandlers['Escape'] = function() {
   this.syncCursors();
 }
 
+Editor.prototype.keyHandlers['Control'] = function() {
+  if (!this.selectionEmpty()) {
+    $('#clipboard')
+      .val(this.selectedText())
+      .focus()
+      .select();
+  } else {
+    $('#clipboard')
+      .addClass("empty")
+      .focus();
+  }
+}
+
 Editor.prototype.mouseToCursorCoords = function(e) {
   var offset = this.$text.offset();
   var ax = e.pageX - offset.left;
@@ -535,11 +572,10 @@ $('#input-hack').on('input', function(e) {
   }
 
   editor.insert(this.value);
-  editor.render();
   $(this).val('');
 });
 
-$('#input-hack').on('keydown', function(e) {
+$(document).on('keydown', function(e) {
   var key = getKeyName(e);
 
   if (key == 'Tab' || key == 'ArrowLeft' || key == 'ArrowRight') {
@@ -550,6 +586,31 @@ $('#input-hack').on('keydown', function(e) {
     editor.keyHandlers[key].apply(editor, [e.shiftKey]);
     editor.render();
   } 
+});
+
+$(document).on('keyup', function(e) {
+  if (!$(e.target).is('#clipboard')) {
+    return;
+  }
+
+  var key = getKeyName(e);
+
+  if (key == 'c') {
+    // do nothing, actually
+  } else if (key == 'v') {
+    editor.paste($('#clipboard').val());
+  } else if (key == 'x') {
+    editor.deleteSelectedText();
+  } else if (key == 'a') {
+    editor.selectAll();
+    $('#clipboard')
+      .val(editor.selectedText())
+      .focus()
+      .select();
+  } if (key == 'Control') {
+    $('#input-hack').focus();
+    $('#clipboard').val('');
+  }
 });
 
 var code = editor.getCode();
