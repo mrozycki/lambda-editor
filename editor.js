@@ -144,15 +144,16 @@ Editor.prototype.getIndentLevel = function(line) {
 }
 
 Editor.prototype.indent = function(line, amount) {
+  var result;
   if (amount >= 0) {
-    return new Array(amount+1).join(" ")+line;
+    result = new Array(amount+1).join(" ")+line;
+  } else if (-amount < this.getIndentLevel(line)) {
+    result = line.slice(-amount);
+  } else {
+    result = line.slice(this.getIndentLevel(line));
   }
 
-  if (-amount < this.getIndentLevel(line)) {
-    return line.slice(-amount);
-  }
-
-  return line.slice(this.getIndentLevel(line));
+  return result;
 }
 
 Editor.prototype.selectionBoundaries = function() {
@@ -209,7 +210,7 @@ Editor.prototype.deleteSelectedText = function() {
 
     this.cursor.endX = boundaries.startX;
     this.cursor.endY = boundaries.startY;
-    this.syncCursors(false);
+    this.syncCursors();
     console.log(this.cursor);
     return;
   }
@@ -222,7 +223,7 @@ Editor.prototype.deleteSelectedText = function() {
 
   this.cursor.endX = boundaries.startX;
   this.cursor.endY = boundaries.startY;
-  this.syncCursors(false);
+  this.syncCursors();
 }
 
 Editor.prototype.renderLine = function(k) {
@@ -281,7 +282,7 @@ Editor.prototype.insert = function(character) {
     + this.code[this.cursor.endY].slice(this.cursor.endX);
 
   this.cursor.endX += character.length;
-  this.syncCursors(false);
+  this.syncCursors();
 }
 
 Editor.prototype.getCode = function() {
@@ -316,7 +317,7 @@ Editor.prototype.keyHandlers['Backspace'] = function() {
     this.cursor.endX = this.code[this.cursor.endY-1].length;
     this.code[this.cursor.endY-1] += line;
     this.cursor.endY--;
-    this.syncCursors(false);
+    this.syncCursors();
     return;
   }
 
@@ -325,7 +326,7 @@ Editor.prototype.keyHandlers['Backspace'] = function() {
     + this.code[this.cursor.endY].slice(this.cursor.endX);
   this.cursor.endX = Math.max(this.cursor.endX-1, 0);
 
-  this.syncCursors(false);
+  this.syncCursors();
 }
 
 Editor.prototype.keyHandlers['Delete'] = function() {
@@ -344,6 +345,7 @@ Editor.prototype.keyHandlers['Delete'] = function() {
 }
 
 Editor.prototype.keyHandlers['Enter'] = function() {
+  this.deleteSelectedText();
   var line = this.currentLine();
   this.currentLine(line.slice(0, this.cursor.endX));
 
@@ -358,15 +360,23 @@ Editor.prototype.keyHandlers['Enter'] = function() {
 
   this.cursor.endY++;
   this.cursor.endX = this.getIndentLevel(this.currentLine());
+  this.syncCursors();
 }
 
-Editor.prototype.keyHandlers['Tab'] = function() {
-  if (!this.selectionEmpty()) {
-    // TODO: pad selected lines
-    return
+Editor.prototype.keyHandlers['Tab'] = function(shift) {
+  var indent = 4 * (shift ? -1 : 1);
+  var selectionEmpty = this.selectionEmpty();
+  var boundaries = this.selectionBoundaries();
+  for (var i = boundaries.startY; i <= boundaries.endY; i++) {
+    this.code[i] = this.indent(this.code[i], indent);
   }
 
-  this.insert(new Array(5).join(' '));
+  this.cursor.endX += indent;
+  if (selectionEmpty) {
+    this.syncCursors();
+  } else {
+    this.cursor.startX += indent;
+  }
 }
 
 Editor.prototype.keyHandlers['ArrowDown'] = function(shift) {
@@ -426,7 +436,7 @@ Editor.prototype.keyHandlers['Home'] = function(shift) {
 
 Editor.prototype.keyHandlers['Escape'] = function() {
   $('#input-hack').val('');
-  this.syncCursors(false);
+  this.syncCursors();
 }
 
 Editor.prototype.mouseToCursorCoords = function(e) {

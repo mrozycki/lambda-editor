@@ -36,12 +36,26 @@ pre.line span,
 }
 
 #header p:first-child {
+  font-weight: bold;
+}
+
+#header p:not(:last-child) {
   float: left;
+  margin-right: 20px;
 }
 
 #header p:last-child {
   float: right;
-  color: gray;
+  color: #BCBCBC;
+}
+
+#header a {
+  color: #BCBCBC;
+}
+
+#header a:hover {
+  color: white;
+  text-decoration: none;
 }
 
 #editor {
