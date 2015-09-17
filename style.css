@@ -12,6 +12,7 @@ html, body {
 #header p,
 #editor,
 pre.line,
+pre.line span,
 #text-width-hack {
   font-family: 'Fira Mono', 'Consolas', monospace;
   font-size: 18px;
@@ -57,6 +58,10 @@ pre.line {
   font-feature-settings: "liga" 0;
   margin-left: -10px;
   padding-left: 10px;
+}
+
+pre.line span {
+  display: inline-block;
 }
 
 .gutter {

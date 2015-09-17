@@ -17,6 +17,9 @@ function Editor($e) {
   this.$gutter = $e.find('.gutter ul');
   this.$text = $e.find('.lines');
   this.$cursor = $('#cursor');
+  this.cursor = {startX: 0, startY: 0, endX: 0, endY: 0};
+  this.isMouseDown = false;
+  this.isRendering = false;
 
 //  this.code = [
 //    '// Author: Mariusz Różycki',
@@ -64,7 +67,7 @@ function Editor($e) {
     '',
     'var t = 0;',
     'draw = function() {',
-    '    background(255);    ',
+    '    background(255);',
     '    strokeWeight(width/60);',
     '    ',
     '    for (var i = 0; i < points.length-1; i++, t+= 0.2) {',
@@ -86,8 +89,6 @@ function Editor($e) {
 //    '    t += 0.1;',
 //    '}',
 //  ];
-
-  this.cursor = {x: 0, y: 0};
 }
 
 Editor.prototype.getCharWidth = function() {
@@ -106,7 +107,7 @@ Editor.prototype.formatLine = function(line, active) {
   line = line.replace(/(\/\/.*)$/, '<span class="comment">$1</span>');
 
   var result = $('<pre></pre>').addClass('line').html(line);
-  if (active) {
+  if (active && this.selectionEmpty()) {
     result.addClass('cursor');
   }
   return result;
@@ -114,10 +115,10 @@ Editor.prototype.formatLine = function(line, active) {
 
 Editor.prototype.currentLine = function(line) {
   if (line === undefined) {
-    return this.code[this.cursor.y];
+    return this.code[this.cursor.endY];
   }
 
-  this.code[this.cursor.y] = line;
+  this.code[this.cursor.endY] = line;
   return line;
 }
 
@@ -154,181 +155,311 @@ Editor.prototype.indent = function(line, amount) {
   return line.slice(this.getIndentLevel(line));
 }
 
+Editor.prototype.selectionBoundaries = function() {
+  if (this.cursor.startY > this.cursor.endY) {
+    return { startX: this.cursor.endX, startY: this.cursor.endY,
+      endX: this.cursor.startX, endY: this.cursor.startY };
+  }
+
+  if (this.cursor.startY == this.cursor.endY) {
+    var y = this.cursor.startY;
+    var sx = Math.min(this.cursor.startX, this.cursor.endX);
+    var ex = Math.max(this.cursor.startX, this.cursor.endX);
+    return { startX: sx, startY: y, endX: ex, endY: y }
+  }
+
+  return this.cursor;
+}
+
+Editor.prototype.lineSelected = function(k) {
+  return this.cursor.startY < k && k < this.cursor.endY
+    || this.cursor.startY > k && k > this.cursor.endY;
+}
+
+Editor.prototype.selectionEmpty = function() {
+  return this.cursor.startY == this.cursor.endY 
+    && this.cursor.startX == this.cursor.endX;
+}
+
+Editor.prototype.selectedText = function() {
+  if (this.cursor.startY == this.cursor.endY 
+    && this.cursor.startX == this.cursor.endX) {
+    return "";
+  }
+
+  var boundaries = this.selectionBoundaries();
+  if (boundaries.startY == boundaries.endY) {
+    return this.code[boundaries.startY]
+      .slice(boundaries.startX, boundaries.endX);
+  }
+
+  return "asdf";
+}
+
+Editor.prototype.deleteSelectedText = function() {
+  if (this.selectionEmpty()) {
+    return;
+  }
+
+  var boundaries = this.selectionBoundaries();
+  if (boundaries.startY == boundaries.endY) {
+    this.code[boundaries.startY] =
+      this.code[boundaries.startY].slice(0, boundaries.startX)
+      + this.code[boundaries.startY].slice(boundaries.endX);
+
+    this.cursor.endX = boundaries.startX;
+    this.cursor.endY = boundaries.startY;
+    this.syncCursors(false);
+    console.log(this.cursor);
+    return;
+  }
+
+  this.code[boundaries.startY] = 
+    this.code[boundaries.startY].slice(0, boundaries.startX) +
+    this.code[boundaries.endY].slice(boundaries.endX);
+
+  this.code.splice(boundaries.startY+1, boundaries.endY-boundaries.startY);
+
+  this.cursor.endX = boundaries.startX;
+  this.cursor.endY = boundaries.startY;
+  this.syncCursors(false);
+}
+
+Editor.prototype.renderLine = function(k) {
+  this.$gutter.append(this.generateLineNumber(k+1, k == this.cursor.endY));
+
+  var selectionBoundaries = this.selectionBoundaries();
+  var line = this.code[k];
+  if (this.selectionEmpty()) {
+  } else if (this.lineSelected(k)) {
+    line = '<span class="selected">'+line+'</span>';
+  } else if (selectionBoundaries.startY == k && selectionBoundaries.endY == k) {
+    line = line.slice(0, selectionBoundaries.startX)
+      + '<span class="selected">'+line.slice(selectionBoundaries.startX, selectionBoundaries.endX)+'</span>'
+      + line.slice(selectionBoundaries.endX);
+  } else if (selectionBoundaries.startY == k) {
+    line = line.slice(0, selectionBoundaries.startX)
+      + '<span class="selected">'+line.slice(selectionBoundaries.startX)+'</span>';
+  } else if (selectionBoundaries.endY == k) {
+    line = '<span class="selected">'+line.slice(0, selectionBoundaries.endX)+'</span>'
+      + line.slice(selectionBoundaries.endX);
+  }
+
+  return this.formatLine(line, k == this.cursor.endY);
+}
+
 Editor.prototype.render = function() {
+  this.rendering = true;
   this.$gutter.empty();
   this.$text.empty();
 
   var self = this;
-  $.each(this.code, function(k, v) {
-    self.$gutter.append(self.generateLineNumber(k+1, k == self.cursor.y));
-    self.$text.append(self.formatLine(v, k == self.cursor.y));
+  $.each(this.code, function(k) {
+    self.$text.append(self.renderLine(k));
   });
 
   var charWidth = this.getCharWidth();
   var charHeight = this.$cursor.height();
 
   this.$cursor.css({
-    top: this.cursor.y*charHeight+"px",
-    left: Math.min(this.cursor.x, this.currentLine().length)*charWidth+"px"
+    top: this.cursor.endY*charHeight+"px",
+    left: Math.max(0, Math.min(this.cursor.endX, this.currentLine().length))*charWidth+"px"
   });
+  this.rendering = false;
 }
 
 Editor.prototype.insert = function(character) {
+  this.deleteSelectedText();
+
   if (character[0] == '}' && this.currentLine().trim() == "") {
     this.currentLine(this.indent(this.currentLine(), -4));
   }
 
-  this.code[this.cursor.y] =
-    this.code[this.cursor.y].slice(0, this.cursor.x)
+  this.code[this.cursor.endY] =
+    this.code[this.cursor.endY].slice(0, this.cursor.endX)
     + character
-    + this.code[this.cursor.y].slice(this.cursor.x);
+    + this.code[this.cursor.endY].slice(this.cursor.endX);
 
-  this.cursor.x += character.length;
+  this.cursor.endX += character.length;
+  this.syncCursors(false);
 }
 
 Editor.prototype.getCode = function() {
   return ["size(600,600);"].concat(this.code).join('\n');
 }
 
+Editor.prototype.syncCursors = function(shift) {
+  if (!shift) {
+    this.cursor.startY = this.cursor.endY;
+    this.cursor.startX = this.cursor.endX;
+  }
+}
+
 Editor.prototype.keyHandlers = [];
 
 Editor.prototype.keyHandlers['Backspace'] = function() {
-  if (this.cursor.x == 0 && this.cursor.y == 0) {
+  if (!this.selectionEmpty()) {
+    this.deleteSelectedText();
     return;
   }
 
-  if (this.cursor.x > this.code[this.cursor.y].length) {
-    this.cursor.x = this.code[this.cursor.y].length;
-  }
-
-  if (this.cursor.x == 0) {
-    var line = this.code.splice(this.cursor.y, 1);
-    this.cursor.x = this.code[this.cursor.y-1].length;
-    this.code[this.cursor.y-1] += line;
-    this.cursor.y--;
+  if (this.cursor.endX == 0 && this.cursor.endY == 0) {
     return;
   }
 
-  this.code[this.cursor.y] =
-    this.code[this.cursor.y].slice(0, Math.max(0, this.cursor.x-1))
-    + this.code[this.cursor.y].slice(this.cursor.x);
-  this.cursor.x = Math.max(this.cursor.x-1, 0);
+  if (this.cursor.endX > this.code[this.cursor.endY].length) {
+    this.cursor.endX = this.code[this.cursor.endY].length;
+  }
+
+  if (this.cursor.endX == 0) {
+    var line = this.code.splice(this.cursor.endY, 1);
+    this.cursor.endX = this.code[this.cursor.endY-1].length;
+    this.code[this.cursor.endY-1] += line;
+    this.cursor.endY--;
+    this.syncCursors(false);
+    return;
+  }
+
+  this.code[this.cursor.endY] =
+    this.code[this.cursor.endY].slice(0, Math.max(0, this.cursor.endX-1))
+    + this.code[this.cursor.endY].slice(this.cursor.endX);
+  this.cursor.endX = Math.max(this.cursor.endX-1, 0);
+
+  this.syncCursors(false);
 }
 
 Editor.prototype.keyHandlers['Delete'] = function() {
-  if (this.cursor.y >= this.code.length-1 
-    && this.cursor.x >= this.code[this.cursor.y].length) {
+  if (!this.selectionEmpty()) {
+    this.deleteSelectedText();
     return;
   }
 
-  this.keyHandlers['ArrowRight'].apply(this);
+  if (this.cursor.endY >= this.code.length-1 
+    && this.cursor.endX >= this.code[this.cursor.endY].length) {
+    return;
+  }
+
+  this.keyHandlers['ArrowRight'].apply(this, [false]);
   this.keyHandlers['Backspace'].apply(this);
 }
 
 Editor.prototype.keyHandlers['Enter'] = function() {
   var line = this.currentLine();
-  this.currentLine(line.slice(0, this.cursor.x));
+  this.currentLine(line.slice(0, this.cursor.endX));
 
   this.code.splice(
-    this.cursor.y+1, 0, 
+    this.cursor.endY+1, 0, 
     this.indent(
-      line.slice(this.cursor.x), 
+      line.slice(this.cursor.endX), 
       this.getIndentLevel(this.currentLine()) 
         + (this.currentLine().substr(-1) == "{" ? 4 : 0)
     )
   );
 
-  this.cursor.y++;
-  this.cursor.x = this.getIndentLevel(this.currentLine());
+  this.cursor.endY++;
+  this.cursor.endX = this.getIndentLevel(this.currentLine());
 }
 
 Editor.prototype.keyHandlers['Tab'] = function() {
+  if (!this.selectionEmpty()) {
+    // TODO: pad selected lines
+    return
+  }
+
   this.insert(new Array(5).join(' '));
 }
 
-Editor.prototype.keyHandlers['ArrowDown'] = function() {
-  if (this.cursor.y >= this.code.length-1) {
-    this.cursor.x = this.currentLine().length;
+Editor.prototype.keyHandlers['ArrowDown'] = function(shift) {
+  if (this.cursor.endY >= this.code.length-1) {
+    this.cursor.endX = this.currentLine().length;
     return;
   }
 
-  this.cursor.y = this.cursor.y+1;
+  this.cursor.endY = this.cursor.endY+1;
+  this.syncCursors(shift);
 }
 
-Editor.prototype.keyHandlers['ArrowUp'] = function() {
-  if (this.cursor.y <= 0) {
-    this.cursor.x = 0;
+Editor.prototype.keyHandlers['ArrowUp'] = function(shift) {
+  if (this.cursor.endY <= 0) {
+    this.cursor.endX = 0;
     return;
   }
 
-  this.cursor.y = Math.max(0, this.cursor.y-1);
+  this.cursor.endY = Math.max(0, this.cursor.endY-1);
+  this.syncCursors(shift);
 }
 
-Editor.prototype.keyHandlers['ArrowRight'] = function() {
-  this.cursor.x = this.cursor.x+1;
-  if (this.cursor.x > this.code[this.cursor.y].length 
-      && this.cursor.y < this.code.length-1) {
-    this.cursor.y ++;
-    this.cursor.x = 0;
-  } else if (this.cursor.x > this.code[this.cursor.y].length) {
-    this.cursor.x = this.code[this.cursor.y].length;
+Editor.prototype.keyHandlers['ArrowRight'] = function(shift) {
+  this.cursor.endX = this.cursor.endX+1;
+  if (this.cursor.endX > this.code[this.cursor.endY].length 
+      && this.cursor.endY < this.code.length-1) {
+    this.cursor.endY ++;
+    this.cursor.endX = 0;
+  } else if (this.cursor.endX > this.code[this.cursor.endY].length) {
+    this.cursor.endX = this.code[this.cursor.endY].length;
   }
+  this.syncCursors(shift);
 }
 
-Editor.prototype.keyHandlers['ArrowLeft'] = function() {
-  this.cursor.x = this.cursor.x-1;
-  if (this.cursor.x < 0 && this.cursor.y > 0) {
-    this.cursor.y--;
-    this.cursor.x = this.code[this.cursor.y].length;
-  } else if (this.cursor.x < 0) {
-    this.cursor.x = 0;
-  } else if (this.cursor.x-1 > this.code[this.cursor.y].length) {
-    this.cursor.x = this.code[this.cursor.y].length-1;
+Editor.prototype.keyHandlers['ArrowLeft'] = function(shift) {
+  this.cursor.endX = this.cursor.endX-1;
+  if (this.cursor.endX < 0 && this.cursor.endY > 0) {
+    this.cursor.endY--;
+    this.cursor.endX = this.code[this.cursor.endY].length;
+  } else if (this.cursor.endX < 0) {
+    this.cursor.endX = 0;
+  } else if (this.cursor.endX-1 > this.code[this.cursor.endY].length) {
+    this.cursor.endX = this.code[this.cursor.endY].length-1;
   }
+  this.syncCursors(shift);
 }
 
-Editor.prototype.keyHandlers['End'] = function() {
-  this.cursor.x = this.code[this.cursor.y].length;
+Editor.prototype.keyHandlers['End'] = function(shift) {
+  this.cursor.endX = this.code[this.cursor.endY].length;
+  this.syncCursors(shift);
 }
 
-Editor.prototype.keyHandlers['Home'] = function() {
-  this.cursor.x = 0;
+Editor.prototype.keyHandlers['Home'] = function(shift) {
+  this.cursor.endX = 0;
+  this.syncCursors(shift);
 }
 
 Editor.prototype.keyHandlers['Escape'] = function() {
   $('#input-hack').val('');
+  this.syncCursors(false);
 }
 
-Editor.prototype.handleKeyPress = function(e) {
-  if (e.metaKey || e.ctrlKey) {
-    return;
-  }
-  
-  var key = e.key || getKeyName(e);
-  if (this.keyHandlers[key]) {
-    e.preventDefault();
-    this.keyHandlers[key].apply(this);
-  } else if(key.length == 1) {
-    e.preventDefault();
-    this.insert(key);
-  } else {
-    console.log(key);
-  }
-
-  this.render();
-}
-
-Editor.prototype.handleMouseDown = function(e) {
+Editor.prototype.mouseToCursorCoords = function(e) {
   var offset = this.$text.offset();
-  
   var ax = e.pageX - offset.left;
   var ay = e.pageY - offset.top;
   var charWidth = this.getCharWidth();
   var charHeight = this.$cursor.height();
-  this.cursor.y = Math.min(Math.floor(ay/charHeight), this.code.length);
-  this.cursor.x = Math.min(Math.round(ax/charWidth), this.currentLine().length);
 
-  this.render();
+  var rx = Math.round(ax/charWidth);
+  var ry = Math.floor(ay/charHeight);
+
+  if (ry > this.code.length-1) {
+    ry = this.code.length-1;
+    rx = this.code[this.code.length-1].length;
+  }
+
+  if (ry < 0) {
+    ry = 0;
+    rx = 0;
+  }
+
+  return { x: rx, y: ry };
+}
+
+Editor.prototype.moveStartCursor = function(coords) {
+  this.cursor.startX = coords.x;
+  this.cursor.startY = coords.y;
+}
+
+Editor.prototype.moveEndCursor = function(coords) {
+  this.cursor.endX = coords.x;
+  this.cursor.endY = coords.y;
 }
 
 var editor = new Editor($editor);
@@ -336,10 +467,37 @@ editor.render();
 $('#input-hack').focus();
 $('#input-hack').val('');
 
-$('#editor .lines').mousedown(function(e) {
+$(document).mousedown(function(e) {
   e.preventDefault();
-  editor.handleMouseDown(e);
+});
+
+$('#editor').mousedown(function(e) {
+  editor.isMouseDown = true;
+  editor.moveStartCursor(editor.mouseToCursorCoords(e));
   $('#input-hack').focus();
+  return false;
+});
+
+$('#editor').mousemove(function(e) {
+  e.preventDefault();
+  if (!editor.isMouseDown || editor.isRendering) return;
+  editor.moveEndCursor(editor.mouseToCursorCoords(e));
+  editor.render();
+});
+
+$('#editor').mouseup(function(e) {
+  editor.isMouseDown = false;
+  editor.moveEndCursor(editor.mouseToCursorCoords(e));
+  editor.render();
+});
+
+$('#editor').mouseleave(function(e) {
+  console.log("mouseleave", editor.isMouseDown);
+  if (!editor.isMouseDown) return;
+
+  editor.isMouseDown = false;
+  editor.moveEndCursor(editor.mouseToCursorCoords(e));
+  editor.render();
 });
 
 $('#input-hack').on('input', function(e) {
@@ -361,9 +519,9 @@ $('#input-hack').on('keydown', function(e) {
   }
 
   if (editor.keyHandlers[key]) {
-    editor.keyHandlers[key].apply(editor);
+    editor.keyHandlers[key].apply(editor, [e.shiftKey]);
     editor.render();
-  }
+  } 
 });
 
 var code = editor.getCode();

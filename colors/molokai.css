@@ -3,7 +3,6 @@
   color: #F8F8F2;
 }
 
-
 .boolean {
   color: #AE81FF;
 }
@@ -22,7 +21,7 @@
 }
 
 .cursor {
-  background-color: #3E3D32;
+  background-color: #293739;
 }
 
 .gutter {
@@ -46,4 +45,9 @@
 .comment,
 .comment * {
   color: #75715E;
+}
+
+.selected {
+  background-color: #293739;
+  color: #F8F8F2;
 }
