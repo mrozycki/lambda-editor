@@ -1,53 +1,63 @@
-#editor {
+.color.editor.background {
   background-color: #272822;
+}
+
+.color.editor.foreground {
   color: #F8F8F2;
 }
 
-.boolean {
+.color.boolean {
   color: #AE81FF;
 }
 
-.keyword {
+.color.keyword {
   color: #F92672;
   font-weight: bold;
 }
 
-.number {
+.color.number {
   color: #AE81FF;
 }
 
-.function {
+.color.function {
   color: #A6E22E;
 }
 
-.cursor {
+.color.cursor {
   background-color: #293739;
 }
 
-.gutter {
-  color: #BCBCBC;
+.color.gutter.background {
   background-color: #3B3A32;
   border-color: #BCBCBC;
 }
 
-.string {
+.color.gutter.foreground {
+  color: #BCBCBC;
+}
+
+.color.string {
   color: #E6DB74;
 }
 
-.gutter li.cursor {
+.color.gutter li.cursor {
   color: #FD971F;
 }
 
-.identifier {
+.color.identifier {
   color: #FD971F;
 }
 
-.comment,
-.comment * {
+.color.comment,
+.color.comment * {
   color: #75715E;
 }
 
-.selected {
+.color.selected {
   background-color: #293739;
   color: #F8F8F2;
+}
+
+.color.preview {
+  
 }

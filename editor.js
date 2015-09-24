@@ -24,6 +24,7 @@ function Editor($e) {
   this.cursor = {startX: 0, startY: 0, endX: 0, endY: 0};
   this.isMouseDown = false;
   this.isRendering = false;
+  this.code = [''];
 
 //  this.code = [
 //    '// Author: Mariusz Różycki',
@@ -62,24 +63,24 @@ function Editor($e) {
 //    '}',
 //  ];
 
-  this.code = [
-    '// Author: Mariusz Różycki',
-    'var points = [];',
-    'for (var i = 0, t = 0; i < 629; i++, t += 0.01) {',
-    '    points.push({x: width/2*(sin(13*t)+1), y: height/2*(cos(19*t)+1)});',
-    '}',
-    '',
-    'var t = 0;',
-    'draw = function() {',
-    '    background(255);',
-    '    strokeWeight(width/60);',
-    '    ',
-    '    for (var i = 0; i < points.length-1; i++, t+= 0.2) {',
-    '        stroke(128*(sin(t+2*PI/3)+1), 128*(sin(t)+1), 128*(sin(t+4*PI/3)+1));',
-    '        line(points[i].x, points[i].y, points[i+1].x, points[i+1].y);',
-    '    }',
-    '}',
-  ];
+//   this.code = [
+//     '// Author: Mariusz Różycki',
+//     'var points = [];',
+//     'for (var i = 0, t = 0; i < 629; i++, t += 0.01) {',
+//     '    points.push({x: width/2*(sin(13*t)+1), y: height/2*(cos(19*t)+1)});',
+//     '}',
+//     '',
+//     'var t = 0;',
+//     'draw = function() {',
+//     '    background(255);',
+//     '    strokeWeight(width/60);',
+//     '    ',
+//     '    for (var i = 0; i < points.length-1; i++, t+= 0.2) {',
+//     '        stroke(128*(sin(t+2*PI/3)+1), 128*(sin(t)+1), 128*(sin(t+4*PI/3)+1));',
+//     '        line(points[i].x, points[i].y, points[i+1].x, points[i+1].y);',
+//     '    }',
+//     '}',
+//   ];
 
 //  this.code = [
 //    '// Author: Mariusz Różycki',
@@ -101,14 +102,14 @@ Editor.prototype.getCharWidth = function() {
 }
 
 Editor.prototype.formatLine = function(line, active) {
-  line = line.replace(/(.|^)("[^"]*")([^>]|$)/g, '$1<span class="string">$2</span>$3');
-  line = line.replace(/(.|^)('[^"]*')([^>]|$)/g, '$1<span class="string">$2</span>$3');
-  line = line.replace(/([0-9]+(\.[0-9]*)?)/g, '<span class="number">$1</span>');
-  line = line.replace(/([^a-zA-Z0-9]|^)(var|function|const|else if|if|else|for|while|return)([^a-zA-Z0-9]|$)/g, '$1<span class="keyword">$2</span>$3');
-  line = line.replace(/([^a-zA-Z0-9]|^)(push|strokeWeight|rect|log|print|line|background|size|ellipse|fill|stroke|noStroke|noFill|sin|cos|tan|cot|max|min|abs|pow|sqrt)([^a-zA-Z0-9]|$)/g, '$1<span class="function">$2</span>$3');
-  line = line.replace(/([^a-zA-Z0-9]|^)(true|false)([^a-zA-Z0-9]|$)/g, '$1<span class="boolean">$2</span>$3');
-  line = line.replace(/([^a-zA-Z0-9]|^)(length|console|width|height|mouseX|mouseY|mousePressed)([^a-zA-Z0-9]|$)/g, '$1<span class="identifier">$2</span>$3');
-  line = line.replace(/(\/\/.*)$/, '<span class="comment">$1</span>');
+  line = line.replace(/(.|^)("[^"]*")([^>]|$)/g, '$1<span class="color string">$2</span>$3');
+  line = line.replace(/(.|^)('[^"]*')([^>]|$)/g, '$1<span class="color string">$2</span>$3');
+  line = line.replace(/([0-9]+(\.[0-9]*)?)/g, '<span class="color number">$1</span>');
+  line = line.replace(/([^a-zA-Z0-9]|^)(var|function|const|else if|if|else|for|while|return)([^a-zA-Z0-9]|$)/g, '$1<span class="color keyword">$2</span>$3');
+  line = line.replace(/([^a-zA-Z0-9]|^)(push|strokeWeight|rect|log|print|line|background|size|ellipse|fill|stroke|noStroke|noFill|sin|cos|tan|cot|max|min|abs|pow|sqrt)([^a-zA-Z0-9]|$)/g, '$1<span class="color function">$2</span>$3');
+  line = line.replace(/([^a-zA-Z0-9]|^)(true|false)([^a-zA-Z0-9]|$)/g, '$1<span class="color boolean">$2</span>$3');
+  line = line.replace(/([^a-zA-Z0-9]|^)(length|console|width|height|mouseX|mouseY|mousePressed)([^a-zA-Z0-9]|$)/g, '$1<span class="color identifier">$2</span>$3');
+  line = line.replace(/(\/\/.*)$/, '<span class="color comment">$1</span>');
 
   var result = $('<pre></pre>').addClass('line').html(line);
   if (active && this.selectionEmpty()) {
@@ -313,8 +314,8 @@ Editor.prototype.insert = function(character, noIndent) {
     + this.code[this.cursor.endY].slice(this.cursor.endX);
 
   this.cursor.endX += character.length;
-  editor.render();
   this.syncCursors();
+  editor.render();
 }
 
 Editor.prototype.paste = function(data) {
@@ -426,20 +427,20 @@ Editor.prototype.keyHandlers['Tab'] = function(shift) {
 Editor.prototype.keyHandlers['ArrowDown'] = function(shift) {
   if (this.cursor.endY >= this.code.length-1) {
     this.cursor.endX = this.currentLine().length;
-    return;
+  } else {
+    this.cursor.endY = this.cursor.endY+1;
   }
 
-  this.cursor.endY = this.cursor.endY+1;
   this.syncCursors(shift);
 }
 
 Editor.prototype.keyHandlers['ArrowUp'] = function(shift) {
   if (this.cursor.endY <= 0) {
     this.cursor.endX = 0;
-    return;
+  } else {
+    this.cursor.endY = Math.max(0, this.cursor.endY-1);
   }
 
-  this.cursor.endY = Math.max(0, this.cursor.endY-1);
   this.syncCursors(shift);
 }
 

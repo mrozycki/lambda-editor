@@ -101,6 +101,11 @@ pre.line span {
   width: 60px;
   text-align: right;
   padding-right: 20px;
+}
+
+.gutter.background {
+  position: fixed;
+  top: 32px;
   border-right: 1px solid;
   box-shadow: 0 0 8px black;
 }
