@@ -114,7 +114,7 @@ pre.line span {
 
 #input-hack {
   opacity: 0;
-  position: absolute;
+  position: fixed;
 }
 
 .gutter ul {

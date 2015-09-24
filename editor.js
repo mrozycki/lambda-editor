@@ -26,6 +26,8 @@ function Editor($e) {
   this.isWaitingForInput = false;
   this.isRendering = false;
   this.code = [''];
+  this.topLine = 1;
+  this.bottomLine = 1;
 
 //  this.code = [
 //    '// Author: Mariusz Różycki',
@@ -282,9 +284,28 @@ Editor.prototype.renderLine = function(k) {
   return this.formatLine(line, k == this.cursor.endY);
 }
 
+Editor.prototype.renderScroll = function() {
+  if (this.cursor.endY < this.topLine) {
+    this.topLine = this.cursor.endY;
+    this.bottomLine = this.topLine 
+      + Math.floor($editor.height()/this.$cursor.height());
+  }
+
+  if (this.cursor.endY > this.bottomLine) {
+    this.bottomLine = this.cursor.endY;
+    this.topLine = this.bottomLine 
+      - Math.floor($editor.height()/this.$cursor.height()) + 1;
+  }
+
+  console.log(this.topLine, this.bottomLine);
+  $editor.scrollTop((this.topLine) * this.$cursor.height());
+}
+
 Editor.prototype.render = function() {
+  console.log('render');
   this.rendering = true;
   this.updateGutter();
+  this.renderScroll();
   this.$text.empty();
 
   var self = this;
@@ -299,6 +320,7 @@ Editor.prototype.render = function() {
     top: this.cursor.endY*charHeight+"px",
     left: Math.max(0, Math.min(this.cursor.endX, this.currentLine().length))*charWidth+"px"
   });
+
   this.rendering = false;
 }
 
