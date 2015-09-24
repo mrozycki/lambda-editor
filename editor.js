@@ -23,6 +23,7 @@ function Editor($e) {
   this.$cursor = $('#cursor');
   this.cursor = {startX: 0, startY: 0, endX: 0, endY: 0};
   this.isMouseDown = false;
+  this.isWaitingForInput = false;
   this.isRendering = false;
   this.code = [''];
 
@@ -113,7 +114,7 @@ Editor.prototype.formatLine = function(line, active) {
 
   var result = $('<pre></pre>').addClass('line').html(line);
   if (active && this.selectionEmpty()) {
-    result.addClass('cursor');
+    result.addClass('color cursor');
   }
   return result;
 }
@@ -265,16 +266,16 @@ Editor.prototype.renderLine = function(k) {
   if (this.selectionEmpty()) {
     line = sanitize(line);
   } else if (this.lineSelected(k)) {
-    line = '<span class="selected">'+sanitize(line)+'</span>';
+    line = '<span class="color selected">'+sanitize(line)+'</span>';
   } else if (selectionBoundaries.startY == k && selectionBoundaries.endY == k) {
     line = sanitize(line.slice(0, selectionBoundaries.startX))
-      + '<span class="selected">'+sanitize(line.slice(selectionBoundaries.startX, selectionBoundaries.endX))+'</span>'
+      + '<span class="color selected">'+sanitize(line.slice(selectionBoundaries.startX, selectionBoundaries.endX))+'</span>'
       + sanitize(line.slice(selectionBoundaries.endX));
   } else if (selectionBoundaries.startY == k) {
     line = sanitize(line.slice(0, selectionBoundaries.startX))
-      + '<span class="selected">'+sanitize(line.slice(selectionBoundaries.startX))+'</span>';
+      + '<span class="color selected">'+sanitize(line.slice(selectionBoundaries.startX))+'</span>';
   } else if (selectionBoundaries.endY == k) {
-    line = '<span class="selected">'+sanitize(line.slice(0, selectionBoundaries.endX))+'</span>'
+    line = '<span class="color selected">'+sanitize(line.slice(0, selectionBoundaries.endX))+'</span>'
       + sanitize(line.slice(selectionBoundaries.endX));
   }
 
@@ -408,7 +409,8 @@ Editor.prototype.keyHandlers['Enter'] = function(noIndent) {
   this.syncCursors();
 }
 
-Editor.prototype.keyHandlers['Tab'] = function(shift) {
+Editor.prototype.keyHandlers['Tab'] = function(shift, control, alt) {
+  if (control || alt) return;
   var indent = 4 * (shift ? -1 : 1);
   var selectionEmpty = this.selectionEmpty();
   var boundaries = this.selectionBoundaries();
@@ -492,7 +494,6 @@ Editor.prototype.keyHandlers['Control'] = function() {
       .select();
   } else {
     $('#clipboard')
-      .addClass("empty")
       .focus();
   }
 }
@@ -540,10 +541,41 @@ $(document).mousedown(function(e) {
 });
 
 $('#editor').mousedown(function(e) {
+  if (e.button == 2) {
+    $('#context-menu-hack-container')
+      .css({top: e.pageY-10+"px", left: e.pageX-10+"px"});
+    $('#context-menu-hack')
+      .val(editor.selectedText())
+      .focus()
+      .select()
+      .trigger(e);
+
+    editor.isWaitingForInput = true;
+    return;
+  }
+
   editor.isMouseDown = true;
   editor.moveStartCursor(editor.mouseToCursorCoords(e));
   $('#input-hack').focus();
-  return false;
+});
+
+$('#context-menu-hack').mousedown(function(e) {
+  setTimeout(function() {
+    $('#context-menu-hack-container')
+      .css({top: "0px", left: "0px"});
+  }, 200);
+});
+
+$('#context-menu-hack').on('input', function(e) {
+  $('#input-hack').focus();
+  if (!editor.isWaitingForInput) {
+    $(this).val('');
+    return;
+  }
+
+  editor.paste($(this).val());
+  $(this).val('');
+  editor.isWaitingForInput = false;
 });
 
 $('#editor').mousemove(function(e) {
@@ -554,6 +586,7 @@ $('#editor').mousemove(function(e) {
 });
 
 $('#editor').mouseup(function(e) {
+
   editor.isMouseDown = false;
   editor.moveEndCursor(editor.mouseToCursorCoords(e));
   editor.render();
@@ -584,7 +617,7 @@ $(document).on('keydown', function(e) {
   }
 
   if (editor.keyHandlers[key]) {
-    editor.keyHandlers[key].apply(editor, [e.shiftKey]);
+    editor.keyHandlers[key].apply(editor, [e.shiftKey, e.ctrlKey, e.altKey]);
     editor.render();
   } 
 });
