@@ -166,6 +166,10 @@ canvas {
   }
 }
 
+.color.selected {
+  min-width: 10px;
+}
+
 .clearfix {
   clear: both;
 }

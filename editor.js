@@ -267,6 +267,8 @@ Editor.prototype.renderLine = function(k) {
   var line = this.code[k];
   if (this.selectionEmpty()) {
     line = sanitize(line);
+  } else if (this.lineSelected(k) && this.currentLine().trim().length == 0) {
+    line = '<span class="color selected">&nbsp;</span>';
   } else if (this.lineSelected(k)) {
     line = '<span class="color selected">'+sanitize(line)+'</span>';
   } else if (selectionBoundaries.startY == k && selectionBoundaries.endY == k) {
